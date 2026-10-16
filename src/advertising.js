@@ -1,3 +1,4 @@
+import {isolatedAdOrigin,frameDescriptor} from './ad-origin.js';
 import {json,readJson} from './http.js';
 import {bySlug} from './tools.js';
 import {consume} from './public-api.js';
@@ -42,7 +43,7 @@ export async function adminAdvertising(request,env,auth){
       const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('');
       await env.DB.prepare('DELETE FROM ad_previews WHERE expires_ms<?').bind(Date.now()).run();
       await env.DB.batch([env.DB.prepare('INSERT INTO ad_previews VALUES(?,?,?)').bind(await hash(token),JSON.stringify(slot),Date.now()+60000),env.DB.prepare('INSERT INTO audit_log(actor,action) VALUES(?,?)').bind(auth.email,'advertising.preview')]);
-      return json({width:slot.width,height:slot.height,src:'/advertising/preview/frame?permit='+token});
+      return json({width:slot.width,height:slot.height,...frameDescriptor('/advertising/preview/frame?permit='+token,env)});
     }catch{return json({error:'No se pudo preparar la prueba.'},400);}
   }
   if(path==='/api/admin/advertising/disable'){
@@ -51,7 +52,7 @@ export async function adminAdvertising(request,env,auth){
     const config={...await readAdvertising(env),enabled:false};await env.DB.batch([env.DB.prepare("UPDATE settings SET value_json=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE key='advertising'").bind(JSON.stringify(config)),env.DB.prepare('DELETE FROM ad_permits'),env.DB.prepare('DELETE FROM ad_previews'),env.DB.prepare('INSERT INTO audit_log(actor,action) VALUES(?,?)').bind(auth.email,'advertising.disabled')]);return json({ok:true});
   }
   if(path!=='/api/admin/advertising')return null;
-  if(request.method==='GET'||request.method==='HEAD')return json({config:await readAdvertising(env),provider_hosts:providerHosts(env),server_enabled:env.ADVERTISING_ENABLED==='true'});
+  if(request.method==='GET'||request.method==='HEAD')return json({config:await readAdvertising(env),provider_hosts:providerHosts(env),server_enabled:env.ADVERTISING_ENABLED==='true',frame_origin:isolatedAdOrigin(env)});
   if(request.method!=='PUT')return json({error:'Método no permitido.'},405);
   if(request.headers.get('Origin')!==new URL(request.url).origin)return json({error:'Origen no permitido.'},403);
   try{const data=validateAdvertising(await readJson(request),env);await env.DB.batch([env.DB.prepare("INSERT INTO settings(key,value_json) VALUES('advertising',?) ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(JSON.stringify(data)),env.DB.prepare('DELETE FROM ad_permits'),env.DB.prepare('DELETE FROM ad_previews'),env.DB.prepare('INSERT INTO audit_log(actor,action) VALUES(?,?)').bind(auth.email,data.enabled?'advertising.update':'advertising.disabled')]);return json({ok:true});}catch(error){return json({error:error.message.startsWith('SQLITE')?'No se pudo guardar la publicidad.':error.message},400);}
@@ -59,6 +60,8 @@ export async function adminAdvertising(request,env,auth){
 export async function advertisingStatus(env){const config=await readAdvertising(env);try{validateAdvertising(config,env);if(config.enabled)return {enabled:true,revision:await hash(JSON.stringify(config))};}catch{}return {enabled:false,revision:''};}
 export async function publicAdvertising(request,env){
   const url=new URL(request.url),path=url.pathname;
+  const adOrigin=isolatedAdOrigin(env);
+  if((path==='/advertising/preview/frame'||path.startsWith('/advertising/frame/'))&&adOrigin&&url.origin!==adOrigin)return new Response('No disponible.',{status:404});
   if(path==='/ads.txt'){
     if(!['GET','HEAD'].includes(request.method))return json({error:'Método no permitido.'},405);
     const config=await readAdvertising(env);
@@ -80,7 +83,7 @@ export async function publicAdvertising(request,env){
       await env.DB.prepare('DELETE FROM ad_permits WHERE expires_ms<?').bind(Date.now()).run();
       const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('');
       await env.DB.prepare('INSERT INTO ad_permits(token_hash,slot_id,expires_ms) VALUES(?,?,?)').bind(await hash(token),slot.id,Date.now()+60000).run();
-      return json({revision:await hash(JSON.stringify(config)),slots:[{id:slot.id,width:slot.width,height:slot.height,src:'/advertising/frame/'+slot.id+'?permit='+token}]});
+      return json({revision:await hash(JSON.stringify(config)),slots:[{id:slot.id,width:slot.width,height:slot.height,...frameDescriptor('/advertising/frame/'+slot.id+'?permit='+token,env)}]});
     }catch{return json({slots:[]},400);}
   }
   if(path==='/advertising/preview/frame'){
@@ -103,6 +106,7 @@ export async function publicAdvertising(request,env){
 }
 
 function bannerResponse(slot,env){
+    const isolated=!!isolatedAdOrigin(env);
     const nonce=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(18)))),sources=providerHosts(env).map(h=>'https://'+h).join(' ');
-    return new Response(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Publicidad</title><style>html,body{margin:0;padding:0;overflow:hidden}</style></head><body><script nonce="${nonce}">window.atOptions=${JSON.stringify({key:slot.key,format:'iframe',width:slot.width,height:slot.height,params:{}})};for(const type of ['load','error'])document.addEventListener(type,event=>{if(event.target.id==='ad-provider')parent.postMessage({type:'pdf-ad-state',state:type==='load'?'loaded':'failed'},'*');},true);</script><script id="ad-provider" src="${slot.script_url}"></script></body></html>`,{headers:{'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':`sandbox allow-scripts; default-src 'none'; script-src 'nonce-${nonce}' ${sources}; img-src ${sources} data:; connect-src ${sources}; frame-src ${sources}; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'`,'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex, nofollow','Permissions-Policy':'camera=(), microphone=(), geolocation=()'}});
+    return new Response(`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Publicidad</title><style>html,body{margin:0;padding:0;overflow:hidden}</style></head><body><script nonce="${nonce}">window.atOptions=${JSON.stringify({key:slot.key,format:'iframe',width:slot.width,height:slot.height,params:{}})};for(const type of ['load','error'])document.addEventListener(type,event=>{if(event.target.id==='ad-provider')parent.postMessage({type:'pdf-ad-state',state:type==='load'?'loaded':'failed'},${JSON.stringify(isolated?env.APP_ORIGIN:'*')});},true);</script><script id="ad-provider" src="${slot.script_url}"></script></body></html>`,{headers:{'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':`sandbox allow-scripts${isolated?' allow-same-origin allow-popups allow-popups-to-escape-sandbox':''}; default-src 'none'; script-src ${isolated?"'self' 'unsafe-inline' 'unsafe-eval'":"'nonce-"+nonce+"'"} ${sources}; img-src ${sources} data:; connect-src ${sources}; frame-src ${isolated?"'self'":''} ${sources}; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors ${isolated?env.APP_ORIGIN:"'self'"}`,'Origin-Agent-Cluster':'?1','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex, nofollow','Permissions-Policy':'camera=(), microphone=(), geolocation=(), document-domain=()'}});
 }

@@ -12,7 +12,7 @@ console.log('Salud, sesión segura y escritura SQLite en Docker aprobadas.');
 """
 try:
  docker('network','create',network)
- docker('run','-d','--name',container,'--network',network,'--network-alias','app','--read-only','--tmpfs','/tmp:size=32m,mode=1777','--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory','512m','-e','APP_ORIGIN=https://pdf.localhost','-v',volume+':/data','herramientas-pdf:local')
+ docker('run','-d','--name',container,'--network',network,'--network-alias','app','--read-only','--tmpfs','/tmp:size=32m,mode=1777','--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory','512m','-e','APP_ORIGIN=https://pdf.localhost','-e','AD_ORIGIN=https://ads.pdf.localhost','-e','AD_PROVIDER_HOSTS=ads.example.test','-v',volume+':/data','herramientas-pdf:local')
  for i in range(20):
   probe=subprocess.run(['docker','exec',container,'node','-e',"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"],capture_output=True)
   if probe.returncode==0:break
@@ -41,9 +41,22 @@ if(await post('/api/admin/site',65*1024)!==413)throw Error('otras rutas deben li
 console.log('Proxy: restauración admite más de 64 KB, exige autenticación y respeta 512 KB; resto limitado a 64 KB.');
 """.replace('CA_VALUE',json.dumps(ca))
  print(docker('exec',container,'node','--input-type=module','-e',limits))
+ isolated="""import https from 'node:https'; const ca=CA_VALUE;
+const origin='https://pdf.localhost',base='http://127.0.0.1:3000';
+const login=await fetch(base+'/api/auth/login',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:'owner@example.test',password:'contraseña sintética contenedor 123'})});
+if(!login.ok)throw Error('login');const cookie=login.headers.get('Set-Cookie').split(';')[0],key='a'.repeat(32);
+const save=await fetch(base+'/api/admin/advertising',{method:'PUT',headers:{Origin:origin,Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({enabled:false,reviewed:false,ads_txt:'',slots:[{id:'test',placement:'footer',device:'all',width:300,height:250,key,script_url:'https://ads.example.test/22/'+key,enabled:true}]})});if(!save.ok)throw Error('config');
+const preview=await fetch(base+'/api/admin/advertising/preview',{method:'POST',headers:{Origin:origin,Cookie:cookie,'Content-Type':'application/json'},body:JSON.stringify({consent:true,slot_id:'test'})});const descriptor=await preview.json();if(!descriptor.src?.startsWith('https://ads.pdf.localhost/'))throw Error('origen');
+async function get(path){return new Promise((resolve,reject)=>https.get({hostname:'web',servername:'ads.pdf.localhost',headers:{Host:'ads.pdf.localhost'},ca,path},r=>{r.resume();r.on('end',()=>resolve({status:r.statusCode,csp:r.headers['content-security-policy']}));}).on('error',reject));}
+const frame=await get(new URL(descriptor.src).pathname+new URL(descriptor.src).search);if(frame.status!==200||!frame.csp.includes('allow-same-origin')||!frame.csp.includes("frame-ancestors https://pdf.localhost"))throw Error('marco separado');
+if((await get('/api/admin/config')).status!==404||(await get('/')).status!==404)throw Error('rutas privadas');
+console.log('Caddy: segundo hostname HTTPS, marco publicitario separado y rutas privadas bloqueadas comprobados.');
+""".replace('CA_VALUE',json.dumps(ca))
+ print(docker('exec',container,'node','--input-type=module','-e',isolated))
+
 
  docker('stop',container)
- print(docker('run','--rm','-e','APP_ORIGIN=https://pdf.localhost','-v',volume+':/data','herramientas-pdf:local','node','scripts/backup.mjs','restore','/data/backups/'+backup,'--confirm-replace'))
+ print(docker('run','--rm','-e','APP_ORIGIN=https://pdf.localhost','-e','AD_ORIGIN=https://ads.pdf.localhost','-e','AD_PROVIDER_HOSTS=ads.example.test','-v',volume+':/data','herramientas-pdf:local','node','scripts/backup.mjs','restore','/data/backups/'+backup,'--confirm-replace'))
 finally:
  import os
  if 'path' in locals() and os.path.exists(path):os.unlink(path)

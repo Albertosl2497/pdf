@@ -1,3 +1,5 @@
+import {isolatedAdOrigin} from '../ad-origin.js';
+import {publicAdvertising} from '../advertising.js';
 import {createServer} from 'node:http';
 import {readFile,realpath,mkdir} from 'node:fs/promises';
 import {resolve,sep} from 'node:path';
@@ -21,30 +23,38 @@ export async function staticAssets(directory){
     }catch{return new Response('No encontrado',{status:404});}
   }};
 }
-export async function startServer({dataDir=process.env.DATA_DIR||resolve(ROOT,'data'),origin=process.env.APP_ORIGIN||'http://127.0.0.1:3000',port=Number(process.env.PORT||3000),host=process.env.HOST||'127.0.0.1',production=process.env.NODE_ENV==='production',dist=resolve(ROOT,'dist')}={}){
+export async function startServer({dataDir=process.env.DATA_DIR||resolve(ROOT,'data'),origin=process.env.APP_ORIGIN||'http://127.0.0.1:3000',port=Number(process.env.PORT||3000),host=process.env.HOST||'127.0.0.1',production=process.env.NODE_ENV==='production',adOrigin=process.env.AD_ORIGIN||'',dist=resolve(ROOT,'dist')}={}){
   const parsed=new URL(origin);if(parsed.origin!==origin||parsed.username||parsed.password||!['http:','https:'].includes(parsed.protocol))throw Error('APP_ORIGIN debe ser un origen sin ruta.');
   if(production&&parsed.protocol!=='https:')throw Error('Producción requiere APP_ORIGIN HTTPS.');
+  const frameOrigin=isolatedAdOrigin({AD_ORIGIN:adOrigin,APP_ORIGIN:origin});
+  if(production&&frameOrigin&&!frameOrigin.startsWith('https://'))throw Error('AD_ORIGIN requiere HTTPS.');
   await mkdir(dataDir,{recursive:true,mode:0o700});
   const filename=resolve(dataDir,'portal.sqlite');
   const release=await lockfile.lock(filename,{realpath:false,stale:30000,update:10000,retries:{retries:20,minTimeout:2000,maxTimeout:2000}});
   let db,server,timer,maintenance=Promise.resolve(),maintaining=false;
   try{
     db=await openDatabase(filename);
-    const env={DB:db,AUTH:new SessionAuth(db,origin),ASSETS:await staticAssets(dist),INDEXING_ENABLED:process.env.INDEXING_ENABLED||'false',ADVERTISING_ENABLED:process.env.ADVERTISING_ENABLED||'false',AD_PROVIDER_HOSTS:process.env.AD_PROVIDER_HOSTS||''};
+    const env={APP_ORIGIN:origin,AD_ORIGIN:frameOrigin||'',DB:db,AUTH:new SessionAuth(db,origin),ASSETS:await staticAssets(dist),INDEXING_ENABLED:process.env.INDEXING_ENABLED||'false',ADVERTISING_ENABLED:process.env.ADVERTISING_ENABLED||'false',AD_PROVIDER_HOSTS:process.env.AD_PROVIDER_HOSTS||''};
     const backups=resolve(dataDir,'backups');
     await cleanup(env);await makeBackup(db,backups);await pruneBackups(backups);
     let lastCleanup=Date.now();
     timer=setInterval(()=>{if(Date.now()-lastCleanup>=86400000&&!maintaining){maintaining=true;maintenance=cleanup(env).then(()=>makeBackup(db,backups)).then(()=>pruneBackups(backups)).then(()=>{lastCleanup=Date.now();}).catch(()=>console.error('No se pudo completar la limpieza programada.')).finally(()=>{maintaining=false;});}},60000);timer.unref();
     server=createServer(async(req,res)=>{
       try{
-        const target=new URL(req.url,origin);if(target.origin!==origin){res.writeHead(400);res.end();return;}
+        const adHost=frameOrigin&&req.headers.host===new URL(frameOrigin).host,requestOrigin=adHost?frameOrigin:origin;
+        const target=new URL(req.url,requestOrigin);if(target.origin!==requestOrigin){res.writeHead(400);res.end();return;}
+        if(adHost&&(!['GET','HEAD'].includes(req.method)||!(target.pathname==='/advertising/preview/frame'||target.pathname.startsWith('/advertising/frame/')))){res.writeHead(404,{'Cache-Control':'no-store','X-Robots-Tag':'noindex'});res.end();req.resume();return;}
         const bodyLimit=target.pathname==='/api/admin/config/restore/preview'?524288:65536;
         let total=0;const chunks=[];
         if(Number(req.headers['content-length']||0)>bodyLimit){res.writeHead(413,{'Connection':'close'});res.end();req.resume();return;}
         for await(const chunk of req){total+=chunk.length;if(total>bodyLimit){res.writeHead(413,{'Connection':'close'});res.end();return;}chunks.push(chunk);}
         const headers=new Headers();for(const [name,value] of Object.entries(req.headers)){if(value!==undefined)headers.set(name,Array.isArray(value)?value.join(','):value);}
         const request=new Request(target,{method:req.method,headers,...(chunks.length?{body:Buffer.concat(chunks)}:{})});
-        const response=await worker.fetch(request,env);res.writeHead(response.status,Object.fromEntries(response.headers));res.end(req.method==='HEAD'?undefined:Buffer.from(await response.arrayBuffer()));
+        const response=adHost?(await publicAdvertising(request,env)||new Response('No disponible.',{status:404})):await worker.fetch(request,env);
+        const outputHeaders=new Headers(response.headers);
+        if(!adHost&&frameOrigin){const csp=outputHeaders.get('Content-Security-Policy');if(csp)outputHeaders.set('Content-Security-Policy',csp.replace("frame-src 'self'","frame-src 'self' "+frameOrigin));}
+        outputHeaders.set('Origin-Agent-Cluster','?1');
+        res.writeHead(response.status,Object.fromEntries(outputHeaders));res.end(req.method==='HEAD'?undefined:Buffer.from(await response.arrayBuffer()));
       }catch{if(!res.headersSent)res.writeHead(500,{'Content-Type':'text/plain; charset=utf-8'});res.end('Servicio temporalmente no disponible.');}
     });
     server.requestTimeout=15000;server.headersTimeout=10000;server.timeout=30000;

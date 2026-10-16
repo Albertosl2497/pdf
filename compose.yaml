@@ -5,6 +5,7 @@ services:
     init: true
     environment:
       APP_ORIGIN: https://${DOMAIN:?Configura DOMAIN en .env}
+      AD_ORIGIN: https://ads.${DOMAIN:?Configura DOMAIN en .env}
       ADVERTISING_ENABLED: ${ADVERTISING_ENABLED:-false}
       AD_PROVIDER_HOSTS: ${AD_PROVIDER_HOSTS:-}
       INDEXING_ENABLED: ${INDEXING_ENABLED:-false}

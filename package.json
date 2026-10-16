@@ -25,7 +25,8 @@
     "test:vps": "node tests/browser-vps.mjs",
     "test:docker": "python3 tests/docker-vps.py",
     "package:release": "npm run build && node scripts/package.mjs",
-    "test:advertising": "node tests/browser-advertising.mjs"
+    "test:advertising": "node tests/browser-advertising.mjs",
+    "test:isolated-ads": "node tests/browser-isolated-ads.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

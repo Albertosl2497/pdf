@@ -15,3 +15,15 @@
   header Strict-Transport-Security "max-age=31536000"
   reverse_proxy app:3000
 }
+
+ads.{$DOMAIN} {
+  encode zstd gzip
+  header Strict-Transport-Security "max-age=31536000"
+  @frames path /advertising/preview/frame /advertising/frame/*
+  handle @frames {
+    reverse_proxy app:3000
+  }
+  handle {
+    respond "No disponible." 404
+  }
+}

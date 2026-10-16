@@ -79,7 +79,7 @@ En el administrador DNS que realmente controla los nameservers de `pdfalinstante
 
 Corrige registros A antiguos que apunten a otro servidor. Si hay un registro AAAA del dominio raíz, debe apuntar a una IPv6 funcional de este VPS; si no tienes esa IPv6 configurada, elimina únicamente ese AAAA incorrecto. No borres registros MX/TXT de correo ni otros registros ajenos al sitio. Si hay CAA restrictivos, asegúrate de que permiten una autoridad que use Caddy, por ejemplo Let's Encrypt.
 
-Esta entrega sirve **solo `pdfalinstante.com`**. No presupone servicio ni redirección de `www.pdfalinstante.com`: un CNAME por sí solo no configura el certificado ni la redirección en Caddy. Usa el dominio raíz en las pruebas y enlaces.
+El sitio principal sirve **`pdfalinstante.com`**. La publicidad dinámica utiliza **`ads.pdfalinstante.com`**: crear un registro A de nombre `ads` hacia la misma IPv4 antes de probar anuncios. La raíz de ese subdominio devuelve 404 deliberadamente; los marcos requieren permiso temporal. No presupone servicio ni redirección de `www.pdfalinstante.com`: un CNAME por sí solo no configura el certificado ni la redirección en Caddy. Usa el dominio raíz en las pruebas y enlaces.
 
 Si administras DNS en Cloudflare, usa inicialmente «Solo DNS» para este registro mientras verificas el HTTPS de origen. No necesitas Cloudflare para esta instalación.
 
@@ -410,6 +410,7 @@ sudo tar -xzf "$HOME/NUEVO_PAQUETE.tar.gz" -C /opt/pdfalinstante
 sudo docker compose config --quiet
 sudo docker compose build
 sudo docker compose up -d
+sudo docker compose restart web
 sudo docker compose ps
 sudo docker compose logs --tail=100 app web
 ```

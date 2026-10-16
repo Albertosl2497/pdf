@@ -107,3 +107,7 @@ El exportado JSON versión 2 incluye marca, publicidad, guías, estados de herra
 ### Tamaños de papel para imágenes
 
 Imágenes a PDF, fotos de tareas, credencial y las imágenes de trámites admiten A4, Carta, Oficio de 8.5 × 13 pulgadas, Oficio de 21.6 × 34 cm, Legal de 8.5 × 14 pulgadas, Tabloide, A3, A5, Media carta y Ejecutivo. El selector muestra las medidas: Oficio y Legal no son equivalentes. Se mantienen proporciones, orientación y márgenes; en trámites los PDF existentes conservan su tamaño. La impresión física requiere seleccionar el mismo papel y revisar la escala en la impresora.
+
+### Publicidad desde subdominio
+
+Los banners dinámicos del VPS se ejecutan en `https://ads.${DOMAIN}`, con DNS y HTTPS propios. Crear ese registro A antes de probar publicidad y reiniciar `web` al actualizar el Caddyfile. El sitio principal mantiene su CSP restrictiva; los permisos de inline/eval e iframe interno quedan en el origen publicitario. Ver [procedimiento de actualización y límites](docs/publicidad.md#banners-dinámicos-en-un-origen-separado-vps). La prueba `npm run test:isolated-ads` comprueba la generación del creativo sintético, el aislamiento del sitio principal y los endpoints privados inaccesibles desde el subdominio.

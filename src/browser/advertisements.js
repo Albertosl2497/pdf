@@ -1,3 +1,4 @@
+import {configureAdFrame} from './ad-frame.js';
 import {advertisingAllowed} from './telemetry.js';
 let revision=0,frames=[],currentSignature='',controller,activeRevision='',resizeTimer;
 export function removeAdvertisements(){revision++;controller?.abort();controller=null;for(const box of frames){clearTimeout(box.adTimeout);box.remove();}frames=[];currentSignature='';activeRevision='';}
@@ -19,7 +20,7 @@ export async function refreshAdvertisements(){
     for(const slot of data.slots||[]){if(slot.width>availableWidth)continue;
       const box=document.createElement('section');box.className='advertisement';box.setAttribute('aria-label','Publicidad');
       const label=document.createElement('p');label.textContent='Publicidad';label.className='small';
-      const frame=document.createElement('iframe');frame.title='Banner publicitario';frame.setAttribute('sandbox','allow-scripts');frame.referrerPolicy='no-referrer';frame.width=slot.width;frame.height=slot.height;frame.loading='eager';frame.src=slot.src;box.append(label,frame);container.append(box);frames.push(box);box.adTimeout=setTimeout(()=>{box.remove();frames=frames.filter(f=>f!==box);},10000);
+      const frame=document.createElement('iframe');frame.title='Banner publicitario';configureAdFrame(frame,slot);frame.width=slot.width;frame.height=slot.height;frame.loading='eager';box.append(label,frame);container.append(box);frames.push(box);box.adTimeout=setTimeout(()=>{box.remove();frames=frames.filter(f=>f!==box);},10000);
     }
   }catch{/* Un bloqueo publicitario o fallo de red no afecta al documento. */}
 }
@@ -34,4 +35,4 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden){checkActi
 window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(refreshAdvertisements,250);});
 document.addEventListener('pdf:navigation',()=>{removeAdvertisements();refreshAdvertisements();});
 
-window.addEventListener('message',event=>{if(event.origin!=='null'||event.data?.type!=='pdf-ad-state'||!['loaded','failed'].includes(event.data.state))return;const box=frames.find(b=>b.querySelector('iframe')?.contentWindow===event.source);if(!box)return;clearTimeout(box.adTimeout);if(event.data.state==='failed'){box.remove();frames=frames.filter(f=>f!==box);}});
+window.addEventListener('message',event=>{if(event.data?.type!=='pdf-ad-state'||!['loaded','failed'].includes(event.data.state))return;const box=frames.find(b=>b.querySelector('iframe')?.contentWindow===event.source);if(!box||event.origin!==box.querySelector('iframe').dataset.messageOrigin)return;clearTimeout(box.adTimeout);if(event.data.state==='failed'){box.remove();frames=frames.filter(f=>f!==box);}});
