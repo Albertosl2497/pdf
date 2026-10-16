@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
@@ -41,4 +42,19 @@ test('servidor VPS: acceso, assets, límites, persistencia y copia/restauración
   assert.match(await (await fetch(base+'/')).text(),/Marca VPS/);assert.equal((await fetch(base+'/api/admin/config',{headers:{Cookie:cookie}})).status,401);assert.equal(app.db.prepare('SELECT count(*) n FROM ad_permits').first().n,0);
   assert.ok((await readFile(copy)).length>0);
  }finally{await app?.close();await rm(dir,{recursive:true,force:true});}
+});
+
+test('ensayo de recuperación verifica copia en base temporal sin modificar producción',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'pdf-verify-'));let db;
+ try{
+  db=await openDatabase(join(dir,'portal.sqlite'));await setOwner(db,'owner@example.test','contraseña de recuperación sintética 123');
+  db.prepare("INSERT INTO admin_sessions VALUES('session-to-keep',?)").bind(Date.now()+60000).run();
+  execFileSync(process.execPath,['scripts/identity.mjs','Responsable sintético','México','contacto@example.test'],{env:{...process.env,DATA_DIR:dir},encoding:'utf8'});
+  const site=JSON.parse(db.prepare("SELECT value_json FROM settings WHERE key='site'").first().value_json);assert.equal(site.responsible_name,'Responsable sintético');assert.equal(site.brand,'PDF al Instante');
+
+  const backup=await makeBackup(db,join(dir,'copies'));
+  const original=await readFile(backup);
+  const output=execFileSync(process.execPath,['scripts/verify-backup.mjs',backup],{encoding:'utf8'});
+  assert.match(output,/Recuperación verificada/);assert.deepEqual(await readFile(backup),original);assert.equal(db.prepare('SELECT count(*) n FROM admin_sessions').first().n,1);
+ }finally{db?.close();await rm(dir,{recursive:true,force:true});}
 });

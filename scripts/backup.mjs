@@ -6,5 +6,5 @@ if(process.argv[2]==='restore'){
   if(!process.argv[3]||process.argv[4]!=='--confirm-replace')throw Error('Detén el servidor. Uso: npm run backup:restore -- /ruta/copia.sqlite --confirm-replace');
   await restoreBackup(resolve(process.argv[3]),filename);console.log('Base restaurada; sesiones revocadas. Se conservó una copia previa si existía.');
 }else{
-  const db=new SqliteDatabase(filename,{readOnly:true});try{await makeBackup(db,resolve(dir,'backups'));console.log('Copia íntegra guardada en el directorio de backups.');}finally{db.close();}
+  const db=new SqliteDatabase(filename,{readOnly:true});try{const path=await makeBackup(db,resolve(dir,'backups'));console.log(process.argv[2]==='--path'?path:'Copia íntegra guardada: '+path);}finally{db.close();}
 }

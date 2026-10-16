@@ -14,7 +14,10 @@ try{
  await setOwner(app.db,'owner@example.test','contraseña sintética para navegador 123');
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(origin+'/admin');await page.locator('#email').fill('owner@example.test');await page.locator('#password').fill('contraseña sintética para navegador 123');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await page.waitForURL('**/admin');await page.waitForFunction(()=>document.getElementById('brand').value.length>0);
+ await page.locator('#responsible-name').fill('Responsable sintético');await page.locator('#contact-email').fill('contacto@example.test');await page.locator('#responsible-country').fill('México');
  await page.locator('#brand').fill('Marca de prueba VPS');await page.locator('#save-site').click();await page.waitForFunction(()=>document.querySelector('#admin-status').textContent.includes('Guardado'));await page.reload();await page.waitForFunction(()=>document.getElementById('brand').value==='Marca de prueba VPS');
+ assert.equal(await page.locator('#contact-email').inputValue(),'contacto@example.test');
+ const legal=await (await page.request.get(origin+'/privacidad')).text();assert.ok(legal.includes('Responsable sintético'));assert.ok(legal.includes('contacto@example.test'));
  const saved=await (await page.request.get(origin+'/api/admin/export')).json();
  await page.locator('#primary-color').fill('#123456');await page.locator('#logo-file').setInputFiles('tests/fixtures/transparencia.png');await page.locator('#save-site').click();await page.waitForFunction(()=>document.querySelector('#admin-status').textContent.includes('Guardado'));
  await page.locator('#seo-title').fill('PDF al Instante: combinar documentos');await page.locator('#seo-heading').fill('Combinar documentos ahora');await page.locator('#save-seo').click();await page.waitForFunction(()=>document.querySelector('#seo-status').textContent.includes('guardados'));

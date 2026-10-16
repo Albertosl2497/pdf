@@ -1,6 +1,6 @@
 import {imageInfo} from './image-info.js';
 import {bySlug} from './tools.js';
-export const SITE_DEFAULTS={brand:'PDF al Instante',description:'Utilidades para documentos de escuela, trabajo y trámites.',public_origin:null,primary_color:'#184f99',accent_color:'#00776f',logo_data:''};
+export const SITE_DEFAULTS={brand:'PDF al Instante',description:'Utilidades para documentos de escuela, trabajo y trámites.',public_origin:null,primary_color:'#184f99',accent_color:'#00776f',logo_data:'',responsible_name:'',contact_email:'',responsible_country:'',responsible_address:''};
 export function text(value,max,label='Texto'){if(typeof value!=='string'||!value.trim()||value.length>max)throw Error(`${label}: revisa el texto y su longitud máxima (${max}).`);return value.trim();}
 function luminance(color){const channels=color.slice(1).match(/../g).map(c=>parseInt(c,16)/255).map(n=>n<=.04045?n/12.92:((n+.055)/1.055)**2.4);return .2126*channels[0]+.7152*channels[1]+.0722*channels[2];}
 export function validateSite(input){
@@ -10,6 +10,10 @@ export function validateSite(input){
  for(const color of [site.primary_color,site.accent_color])if(typeof color!=='string'||!/^#[a-f0-9]{6}$/i.test(color)||1.05/(luminance(color)+.05)<4.5)throw Error('Los colores deben ser hexadecimales y tener contraste mínimo 4.5:1 sobre blanco.');
  if(typeof site.logo_data!=='string'||site.logo_data.length>44000)throw Error('El logo debe ser PNG de hasta 32 KB y 512 × 512 píxeles.');
  if(site.logo_data){if(!/^data:image\/png;base64,[a-zA-Z0-9+/]+={0,2}$/.test(site.logo_data))throw Error('Solo se admite logo PNG, sin SVG, HTML o URL externa.');const bytes=Uint8Array.from(atob(site.logo_data.split(',')[1]),c=>c.charCodeAt(0));const info=imageInfo(bytes);if(info.type!=='png'||bytes.length>32768||info.width>512||info.height>512)throw Error('El logo supera 32 KB o 512 × 512 píxeles.');}
+ for(const [key,max] of [['responsible_name',200],['contact_email',254],['responsible_country',100],['responsible_address',500]]){const value=input[key]??'';if(typeof value!=='string'||value.length>max||/[\x00-\x1f\x7f]/.test(value.replace(/\r?\n/g,'')))throw Error('Datos del responsable no válidos.');site[key]=value.trim();}
+ const profile=[site.responsible_name,site.contact_email,site.responsible_country];
+ if(profile.some(Boolean)&&!profile.every(Boolean)||site.responsible_address&&!profile.every(Boolean))throw Error('Completa nombre del responsable, correo público y país juntos.');
+ if(site.contact_email&&(!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(site.contact_email)||/[\r\n]/.test(site.contact_email)))throw Error('Correo público no válido.');
  return site;
 }
 export function validateSeo(input){

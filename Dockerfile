@@ -19,7 +19,7 @@ RUN --mount=type=secret,id=build_ca \
     npm ci --omit=dev && npm cache clean --force && mkdir -p /data && chown node:node /data
 COPY --from=build --chown=node:node /app/dist dist
 COPY --chown=node:node src src
-COPY --chown=node:node scripts/owner.mjs scripts/backup.mjs scripts/
+COPY --chown=node:node scripts/owner.mjs scripts/backup.mjs scripts/verify-backup.mjs scripts/identity.mjs scripts/
 COPY --chown=node:node schema.sql schema.sql
 USER node
 EXPOSE 3000

@@ -111,3 +111,7 @@ Imágenes a PDF, fotos de tareas, credencial y las imágenes de trámites admite
 ### Publicidad desde subdominio
 
 Los banners dinámicos del VPS se ejecutan en `https://ads.${DOMAIN}`, con DNS y HTTPS propios. Crear ese registro A antes de probar publicidad y reiniciar `web` al actualizar el Caddyfile. El sitio principal mantiene su CSP restrictiva; los permisos de inline/eval e iframe interno quedan en el origen publicitario. Ver [procedimiento de actualización y límites](docs/publicidad.md#banners-dinámicos-en-un-origen-separado-vps). La prueba `npm run test:isolated-ads` comprueba la generación del creativo sintético, el aislamiento del sitio principal y los endpoints privados inaccesibles desde el subdominio.
+
+### Identidad y respaldo externo
+
+El [procedimiento de cierre urgente](docs/CIERRE-URGENTE.md) permite guardar responsable/correo/país desde el panel o `admin:identity`, preparar una copia privada con `sh scripts/vps-backup.sh`, ensayar su recuperación en una base temporal y descargar/verificar la copia desde Windows. No ejecuta una restauración en producción ni publica datos personales en el repositorio.
