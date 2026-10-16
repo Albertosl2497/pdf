@@ -15,3 +15,16 @@ test('imágenes a PDF y credencial usan las dimensiones de papel elegidas',async
 test('archivos vacíos, falsos, dañados, firmados y exceso de páginas se rechazan',async()=>{assert.throws(()=>detectType(new Uint8Array([1,2,3])));await assert.rejects(()=>inspect([{bytes:new Uint8Array()}]));await assert.rejects(()=>inspect([{bytes:new TextEncoder().encode('%PDF-falso')}]),/dañado/);await assert.rejects(async()=>inspect([await fixture(101)]),/100 páginas/);const file=await fixture(1);const signature=new TextEncoder().encode('\n/ByteRange [0 12 34 56]\n');const signed=new Uint8Array(file.bytes.length+signature.length);signed.set(file.bytes);signed.set(signature,file.bytes.length);await assert.rejects(()=>inspect([{bytes:signed}]),/firmas digitales/);});
 test('formulario se detecta para impedir compresión destructiva',async()=>{const doc=await PDFDocument.create();doc.addPage();doc.getForm().createTextField('Nombre');const [info]=await inspect([{bytes:await doc.save()}]);assert.equal(info.forms,true);});
 test('lector independiente verifica texto y orden del PDF generado',async t=>{try{execFileSync('pdfinfo',['-v'],{stdio:'ignore'});execFileSync('pdftotext',['-v'],{stdio:'ignore'});}catch{t.skip('Poppler no está instalado');return;}const dir=await mkdtemp(join(tmpdir(),'pdf-engine-'));try{const [out]=await processPdf({files:[await fixture()],operation:'extract',pages:'3,1'});const path=join(dir,'out.pdf');await writeFile(path,out.bytes);const info=execFileSync('pdfinfo',[path],{encoding:'utf8'});assert.match(info,/Pages:\s+2/);const text=execFileSync('pdftotext',[path,'-'],{encoding:'utf8'});assert.ok(text.indexOf('Pagina 3')<text.indexOf('Pagina 1'));}finally{await rm(dir,{recursive:true,force:true});}});
+
+test('formatos de imágenes: Oficio, Legal, Tabloide y otros conservan medidas en el PDF descargable',async()=>{
+ const cases=[['oficio',612,936],['oficio-340',216/25.4*72,340/25.4*72],['legal',612,1008],['tabloid',792,1224],['a3',297/25.4*72,420/25.4*72],['a5',148/25.4*72,210/25.4*72],['half-letter',396,612],['executive',522,756]];
+ for(const [paper,width,height] of cases){
+  for(const orientation of ['portrait','landscape']){
+   const [output]=await imagesToPdf({files:[{bytes:png}],paper,orientation});
+   const doc=await PDFDocument.load(output.bytes),size=doc.getPage(0).getSize();
+   assert.ok(Math.abs(size.width-(orientation==='portrait'?width:height))<.01,paper+' ancho');
+   assert.ok(Math.abs(size.height-(orientation==='portrait'?height:width))<.01,paper+' alto');
+  }
+ }
+ await assert.rejects(()=>imagesToPdf({files:[{bytes:png}],paper:'toString'}),/Configuración/);
+});

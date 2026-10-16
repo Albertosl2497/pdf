@@ -1,3 +1,4 @@
+import {paperById} from './paper-sizes.js';
 import {imageInfo} from './image-info.js';
 import { PDFDocument, degrees } from 'pdf-lib';
 
@@ -58,7 +59,7 @@ export async function processPdf({ files, pages = '', operation = 'merge', rotat
 export async function imagesToPdf({ files, paper = 'a4', orientation = 'auto', margin = 24, layout = 'pages' }) {
   validateFiles(files);
   if (files.length > 100) throw Error('El límite es de 100 imágenes.');
-  if (!['a4','letter','image'].includes(paper) || !['auto','portrait','landscape'].includes(orientation)) throw Error('Configuración de página no válida.');
+  if (!(Object.hasOwn(paperById,paper) || paper === 'image') || !['auto','portrait','landscape'].includes(orientation)) throw Error('Configuración de página no válida.');
   margin = Number(margin);
   if (!Number.isFinite(margin) || margin < 0 || margin > 72) throw Error('El margen debe estar entre 0 y 72 puntos.');
   if (layout === 'id' && files.length !== 2) throw Error('Elige exactamente dos imágenes: frente y reverso.');
@@ -70,7 +71,7 @@ export async function imagesToPdf({ files, paper = 'a4', orientation = 'auto', m
     imageInfo(file.bytes);
     const img = type === 'png' ? await doc.embedPng(file.bytes) : await doc.embedJpg(file.bytes);
     if (img.width * img.height > LIMITS.imagePixels) throw Error('La imagen supera los 20 megapíxeles.');
-    let [width,height] = paper === 'letter' ? [612,792] : paper === 'image' ? [img.width * .75 + margin*2,img.height * .75 + margin*2] : [595.28,841.89];
+    let [width,height] = paper === 'image' ? [img.width * .75 + margin*2,img.height * .75 + margin*2] : [paperById[paper].width,paperById[paper].height];
     if (orientation === 'landscape' || (orientation === 'auto' && paper !== 'image' && layout !== 'id' && img.width > img.height)) [width,height] = [height,width];
     if (orientation === 'portrait' && width > height) [width,height] = [height,width];
     const page = layout === 'id' ? (sheet ??= doc.addPage([width,height])) : doc.addPage([width,height]);
