@@ -1,0 +1,17 @@
+{
+  email {$ACME_EMAIL}
+  admin off
+}
+{$DOMAIN} {
+  encode zstd gzip
+  @config_restore path /api/admin/config/restore/preview
+  request_body @config_restore {
+    max_size 512KB
+  }
+  @regular not path /api/admin/config/restore/preview
+  request_body @regular {
+    max_size 64KB
+  }
+  header Strict-Transport-Security "max-age=31536000"
+  reverse_proxy app:3000
+}

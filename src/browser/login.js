@@ -1,0 +1,3 @@
+const form=document.getElementById('login-form'),status=document.getElementById('login-status');
+form?.addEventListener('submit',async e=>{e.preventDefault();const button=form.querySelector('button');button.disabled=true;try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:form.elements.email.value,password:form.elements.password.value})});const data=await r.json();if(!r.ok)throw Error(data.error);form.elements.password.value='';location.assign('/admin');}catch(error){status.textContent=error.message;button.disabled=false;}});
+document.getElementById('logout')?.addEventListener('click',async()=>{const r=await fetch('/api/auth/logout',{method:'POST'});if(r.ok)location.assign('/admin/login');});

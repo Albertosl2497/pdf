@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.env
+data/
+backups/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+release/

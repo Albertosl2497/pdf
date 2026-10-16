@@ -1,0 +1,23 @@
+name = "herramientas-pdf"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+# Sustituye el identificador antes de inicializar D1 remoto o desplegar.
+# Crea la base con: npx wrangler d1 create herramientas-pdf
+[[d1_databases]]
+binding = "DB"
+database_name = "herramientas-pdf"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Sin códigos publicitarios, dominio ni credenciales inventados.
+# No se almacenan documentos personales en esta base.
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = true
+
+[triggers]
+# Limpieza diaria UTC; no se promete borrado al segundo exacto del plazo.
+crons = ["17 3 * * *"]

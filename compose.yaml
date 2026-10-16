@@ -1,0 +1,56 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      APP_ORIGIN: https://${DOMAIN:?Configura DOMAIN en .env}
+      ADVERTISING_ENABLED: ${ADVERTISING_ENABLED:-false}
+      AD_PROVIDER_HOSTS: ${AD_PROVIDER_HOSTS:-}
+      INDEXING_ENABLED: ${INDEXING_ENABLED:-false}
+    volumes:
+      - portal_data:/data
+    expose:
+      - "3000"
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 100
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  web:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Configura DOMAIN en .env}
+      ACME_EMAIL: ${ACME_EMAIL:?Configura ACME_EMAIL en .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  portal_data:
+  caddy_data:
+  caddy_config:

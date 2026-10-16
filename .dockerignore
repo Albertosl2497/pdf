@@ -1,0 +1,15 @@
+.git
+node_modules
+dist
+data
+.wrangler
+.env
+.env.*
+!.env.example
+.dev.vars
+backups
+tests
+attachments
+*.sqlite*
+
+release/
