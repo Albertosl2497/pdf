@@ -1,11 +1,11 @@
-import {refreshAdvertisements,removeAdvertisements} from './advertisements.js';
-import {isAllowed,advertisingAllowed,setAllowed,trackView} from './telemetry.js';
+import {refreshAdvertisements} from './advertisements.js';
+import {isAllowed,setAllowed,trackView} from './telemetry.js';
 const $=id=>document.getElementById(id);
 const preferences=$('preferences');
-function refresh(){if($('advertising-consent'))$('advertising-consent').checked=advertisingAllowed();if(!advertisingAllowed())removeAdvertisements();else refreshAdvertisements();if($('statistics-consent'))$('statistics-consent').checked=isAllowed();if($('preference-state'))$('preference-state').textContent=isAllowed()?'Estadísticas opcionales activadas.':'Estadísticas opcionales desactivadas.';}
+function refresh(){refreshAdvertisements();if($('statistics-consent'))$('statistics-consent').checked=isAllowed();if($('preference-state'))$('preference-state').textContent=isAllowed()?'Estadísticas opcionales activadas.':'Estadísticas opcionales desactivadas.';}
 $('open-preferences')?.addEventListener('click',()=>{preferences.hidden=false;refresh();$('statistics-consent').focus();});
-$('save-preferences')?.addEventListener('click',()=>{const before=isAllowed();setAllowed($('statistics-consent').checked,$('advertising-consent').checked);refresh();preferences.hidden=true;$('open-preferences').focus();if(!before&&isAllowed())trackView();});
-$('reject-preferences')?.addEventListener('click',()=>{setAllowed(false,false);refresh();preferences.hidden=true;$('open-preferences').focus();});
+$('save-preferences')?.addEventListener('click',()=>{const before=isAllowed();setAllowed($('statistics-consent').checked);refresh();preferences.hidden=true;$('open-preferences').focus();if(!before&&isAllowed())trackView();});
+$('reject-preferences')?.addEventListener('click',()=>{setAllowed(false);refresh();preferences.hidden=true;$('open-preferences').focus();});
 document.addEventListener('pdf:consent',refresh);refresh();trackView();
 const form=$('contact-form');
 if(form){

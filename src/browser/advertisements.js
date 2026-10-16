@@ -1,9 +1,8 @@
 import {configureAdFrame} from './ad-frame.js';
-import {advertisingAllowed} from './telemetry.js';
 let revision=0,frames=[],currentSignature='',controller,activeRevision='',resizeTimer;
 export function removeAdvertisements(){revision++;controller?.abort();controller=null;for(const box of frames){clearTimeout(box.adTimeout);box.remove();}frames=[];currentSignature='';activeRevision='';}
 export async function refreshAdvertisements(){
-  if(!advertisingAllowed()||document.hidden||location.pathname.startsWith('/admin')){removeAdvertisements();return;}
+  if(document.hidden||location.pathname.startsWith('/admin')){removeAdvertisements();return;}
   if(!['/','/herramientas','/guias'].includes(location.pathname)&&!document.querySelector('#tool')){removeAdvertisements();return;}
   const container=document.getElementById('advertising-zone');if(!container){removeAdvertisements();return;}
   const style=getComputedStyle(container),maxWidth=parseFloat(style.maxWidth)||document.documentElement.clientWidth;
@@ -14,8 +13,8 @@ export async function refreshAdvertisements(){
   if(currentSignature===signature&&frames.length)return;
   removeAdvertisements();const token=revision;controller=new AbortController();
   try{
-    const response=await fetch('/api/advertising',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({consent:true,page:location.pathname,device}),credentials:'omit',signal:controller.signal});
-    if(!response.ok)return;const data=await response.json();if(token!==revision||!advertisingAllowed())return;
+    const response=await fetch('/api/advertising',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:location.pathname,device}),credentials:'omit',signal:controller.signal});
+    if(!response.ok)return;const data=await response.json();if(token!==revision)return;
     currentSignature=signature;activeRevision=data.revision||'';
     for(const slot of data.slots||[]){if(slot.width>availableWidth)continue;
       const box=document.createElement('section');box.className='advertisement';box.setAttribute('aria-label','Publicidad');
@@ -27,7 +26,7 @@ export async function refreshAdvertisements(){
 // Elimina primero el contenido: un tercero ya cargado no puede "desenviarse".
 // El polling comprueba el interruptor sin renovar banners activos.
 async function checkActivation(){
-  if(!frames.length||!advertisingAllowed()||document.hidden)return;
+  if(!frames.length||document.hidden)return;
   try{const r=await fetch('/api/advertising/status',{credentials:'omit',cache:'no-store'});if(!r.ok){removeAdvertisements();return;}const data=await r.json();if(!data.enabled)removeAdvertisements();else if(data.revision!==activeRevision){removeAdvertisements();refreshAdvertisements();}}catch{removeAdvertisements();}
 }
 setInterval(checkActivation,60000);

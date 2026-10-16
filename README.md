@@ -40,7 +40,7 @@ TEST_ORIGIN=http://127.0.0.1:3000 npm run test:browser
 TEST_ORIGIN=http://127.0.0.1:3000 npm run test:services
 # Prueba autónoma del panel, con base temporal aislada:
 npm run test:vps
-# Aislamiento y consentimiento con proveedor sintético:
+# Publicidad automática y aislamiento con proveedor sintético:
 npm run test:advertising
 ```
 
@@ -57,7 +57,7 @@ Las pruebas cubren motores, rutas, identidad, CSRF, SQLite, D1 local, persistenc
 - Compresión real **por rasterización con pérdida**: exige aceptar que desaparecen texto seleccionable, enlaces y anotaciones. Compara bytes y permite conservar el original si la salida crece. No hay modo de compresión que conserve texto/vectoriales.
 - Continuar con el resultado dentro de otra herramienta, solo en memoria, sin volver a cargarlo ni guardarlo en almacenamiento persistente.
 - HTML inicial útil, catálogo buscable, guías, páginas informativas, alias 301 y 404 reales.
-- Publicidad: panel de banners, `ads.txt`, vista previa privada, aislamiento y consentimiento separado; desactivada por defecto, pendiente de códigos comerciales reales. Ver [docs/publicidad.md](docs/publicidad.md).
+- Publicidad: panel de banners, `ads.txt`, vista previa privada, aislamiento y carga automática para visitantes cuando el propietario la habilita; desactivada por defecto, pendiente de códigos comerciales reales. Ver [docs/publicidad.md](docs/publicidad.md).
 - Panel: marca/dominio, guías de texto publicables, disponibilidad de herramientas, exportación JSON, auditoría, bandeja de consultas y estadísticas con CSV.
 
 ## Seguridad, datos y límites

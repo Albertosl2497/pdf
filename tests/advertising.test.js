@@ -15,9 +15,9 @@ test('API publicitaria cerrada por defecto, sin anuncios ni ads.txt inventados',
  const {mf,call}=await runtime();try{
  assert.equal((await call('/ads.txt')).status,404);
  assert.equal((await call('/api/admin/advertising')).status,401);
- const data={consent:true,page:'/unir-pdf',device:'mobile'};
+ const data={page:'/unir-pdf',device:'mobile'};
  assert.deepEqual((await (await call('/api/advertising',{method:'POST',data})).json()).slots,[]);
- assert.equal((await call('/api/advertising',{method:'POST',data:{...data,consent:false}})).status,400);
+ assert.equal((await call('/api/advertising',{method:'POST',data:{page:'/unir-pdf',device:'mobile'}})).status,200);
  assert.equal((await call('/api/advertising',{method:'POST',data,origin:'https://evil.test'})).status,403);
  assert.equal((await call('/advertising/frame/footer-mobile')).status,404);
  }finally{await mf.dispose();}
@@ -28,7 +28,7 @@ test('configuración persiste, ads.txt exacto, permiso de un uso y frame aislado
  assert.equal((await save(config())).status,200);
  assert.equal((await (await call('/api/admin/advertising',{admin:true})).json()).config.slots[0].key,key);
  assert.equal(await (await call('/ads.txt')).text(),config().ads_txt);
- const request={method:'POST',data:{consent:true,page:'/unir-pdf',device:'mobile'}};
+ const request={method:'POST',data:{page:'/unir-pdf',device:'mobile'}};
  const approved=await (await call('/api/advertising',request)).json();assert.equal(approved.slots.length,1);
  const frame=await call(approved.slots[0].src);assert.equal(frame.status,200);
  const csp=frame.headers.get('Content-Security-Policy');assert.match(csp,/sandbox allow-scripts;/);assert.ok(!csp.includes('allow-same-origin'));assert.match(csp,/https:\/\/ads.example.test/);assert.equal(frame.headers.get('Referrer-Policy'),'no-referrer');
@@ -63,7 +63,7 @@ test('banner /22/CLAVE conserva URL exacta y exige clave, dominio y permisos',as
  }
  const {mf,call}=await runtime(bindings);try{
   assert.equal((await call('/api/admin/advertising',{method:'PUT',admin:true,data})).status,200);
-  const ads=await (await call('/api/advertising',{method:'POST',data:{consent:true,page:'/unir-pdf',device:'mobile'}})).json();
+  const ads=await (await call('/api/advertising',{method:'POST',data:{page:'/unir-pdf',device:'mobile'}})).json();
   assert.equal(ads.slots.length,1);
   const frame=await call(ads.slots[0].src);assert.equal(frame.status,200);
   const html=await frame.text();assert.ok(html.includes(`src="https://ads.example.test/22/${key}"`));assert.ok(frame.headers.get('Content-Security-Policy').includes('sandbox allow-scripts'));

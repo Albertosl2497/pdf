@@ -311,7 +311,7 @@ Haz las pruebas desde tu ordenador y, al menos, un teléfono. Usa documentos sin
 - [ ] Compresión avisa que convierte a imágenes y permite conservar el original si aumenta el peso.
 - [ ] Login, guardado de marca, SEO y logout funcionan; después de salir el panel vuelve a pedir acceso.
 - [ ] Una consulta de contacto de prueba aparece en la bandeja. El formulario requiere esperar unos segundos tras abrirlo.
-- [ ] No aparecen anuncios; la medición respeta aceptación y rechazo.
+- [ ] Con publicidad desactivada no aparecen anuncios; al habilitarla cargan automáticamente. La medición propia respeta aceptación y rechazo sin controlar banners.
 - [ ] Los textos legales y contacto corresponden al responsable real.
 - [ ] Existe una copia completa descargada fuera del VPS y se ha ensayado su restauración en un entorno separado.
 
@@ -393,7 +393,7 @@ curl -fsS https://pdfalinstante.com/sitemap.xml
 
 Antes de activar, verifica que el origen público del panel es `https://pdfalinstante.com`. Con indexación desactivada es normal que robots bloquee y no haya un sitemap indexable. Después, revisa que el sitemap contiene el dominio correcto y que las páginas públicas tienen canonical correcto. Puedes registrar el dominio en Google Search Console, verificarlo con el método que te ofrezca y enviar `https://pdfalinstante.com/sitemap.xml`. La indexación y la posición no están garantizadas.
 
-La publicidad requiere un proceso aparte: códigos reales, revisión de los dominios del proveedor, pruebas de compatibilidad del aislamiento, consentimiento y habilitación en servidor y panel. Sigue `docs/publicidad.md`; no la actives solo cambiando una casilla.
+La publicidad requiere un proceso aparte: códigos reales, revisión de los dominios del proveedor, pruebas de compatibilidad del aislamiento, información de privacidad y habilitación en servidor y panel. Sigue `docs/publicidad.md`; no la actives solo cambiando una casilla.
 
 ## 16. Actualizar sin perder datos
 

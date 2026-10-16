@@ -20,7 +20,7 @@ export function validateAdvertising(data,env){
     if(data.enabled&&slot.enabled&&!approved.includes(host))throw Error('El dominio del banner debe autorizarse en AD_PROVIDER_HOSTS del servidor.');
     return {id:slot.id,placement:'footer',device:slot.device,width:slot.width,height:slot.height,key,script_url,enabled:slot.enabled};
   });
-  if(data.enabled&&(env.ADVERTISING_ENABLED!=='true'||!data.reviewed||!slots.some(s=>s.enabled)))throw Error('Para activar: habilita ADVERTISING_ENABLED, revisa proveedor/consentimiento y configura al menos un banner.');
+  if(data.enabled&&(env.ADVERTISING_ENABLED!=='true'||!data.reviewed||!slots.some(s=>s.enabled)))throw Error('Para activar: habilita ADVERTISING_ENABLED, revisa proveedor y privacidad y configura al menos un banner.');
   const ads_txt=validateAdsTxt(data.ads_txt??'');
   return {enabled:data.enabled,reviewed:data.reviewed,slots,ads_txt};
 }
@@ -72,7 +72,8 @@ export async function publicAdvertising(request,env){
     if(request.headers.get('Origin')!==url.origin)return json({error:'Origen no permitido.'},403);
     try{
       const body=await readJson(request,1024);
-      if(body?.consent!==true||!['mobile','desktop'].includes(body.device)||typeof body.page!=='string'||(body.page!=='/'&&body.page!=='/herramientas'&&body.page!=='/guias'&&!Object.hasOwn(bySlug,body.page.slice(1)))||Object.keys(body).some(k=>!['consent','device','page'].includes(k)))return json({error:'Solicitud no válida.'},400);
+      if(!body||!['mobile','desktop'].includes(body.device)||typeof body.page!=='string'||(body.page!=='/'&&body.page!=='/herramientas'&&body.page!=='/guias'&&!Object.hasOwn(bySlug,body.page.slice(1)))||Object.keys(body).some(k=>!['consent','device','page'].includes(k)))return json({error:'Solicitud no válida.'},400);
+      // El campo consent de clientes antiguos se ignora; no se interpreta como autorización.
       if(!env.DB||env.ADVERTISING_ENABLED!=='true')return json({slots:[]});
       const config=await readAdvertising(env);if(!config.enabled)return json({slots:[]});
       try{validateAdvertising(config,env);}catch{return json({slots:[]});}

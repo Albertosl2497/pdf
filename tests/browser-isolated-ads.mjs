@@ -38,9 +38,9 @@ try{
    };request.send();`});
  });
  const response=await page.goto(origin+'/unir-pdf');const policy=response.headers()['content-security-policy'];assert.ok(policy.includes(`frame-src 'self' ${adOrigin}`));assert.ok(!policy.includes("'unsafe-eval'"));assert.ok(!policy.includes("script-src 'self' 'unsafe-inline'"));
- await page.waitForFunction(()=>document.querySelector('#tool')?.dataset.ready==='true');assert.equal(requests,0);
+ await page.waitForFunction(()=>document.querySelector('#tool')?.dataset.ready==='true');assert.equal(await page.locator('#advertising-consent').count(),0);
  await page.evaluate(()=>{localStorage.setItem('private-sentinel','document-secret');});
- await page.locator('#open-preferences').click();await page.locator('#advertising-consent').check();await page.locator('#save-preferences').click();
+
  const frame=page.frameLocator('.advertisement iframe');await frame.locator('#isolation').waitFor();assert.equal(await frame.locator('#isolation').innerText(),'parent-blocked');
  const inner=frame.frameLocator('#vendor-child');await inner.locator('#creative-image').waitFor({timeout:10000});await inner.locator('#creative-image').evaluate(img=>img.decode());assert.equal(await inner.locator('body').getAttribute('data-dynamic'),'executed');
  assert.equal(await page.locator('.advertisement iframe').evaluate(f=>f.contentDocument),null);
@@ -53,7 +53,7 @@ try{
  assert.equal(page.url(),origin+'/unir-pdf');assert.equal(requests,1);
  await page.locator('#picker').setInputFiles({name:'documento-privado.pdf',mimeType:'application/pdf',buffer:Buffer.from(await (async()=>{const d=await PDFDocument.create();d.addPage();return d.save()})())});await page.waitForFunction(()=>!document.getElementById('process').disabled&&document.getElementById('status').textContent.includes('archivo(s) listo'));await page.locator('#process').evaluate(button=>button.onclick());assert.match(await page.locator('#status').innerText(),/^Documento listo/);assert.equal(await page.locator('#results a[download]').count(),1);
 
- await page.locator('#open-preferences').click();await page.locator('#advertising-consent').uncheck();await page.locator('#save-preferences').click();assert.equal(await page.locator('.advertisement iframe').count(),0);
+ await page.locator('#open-preferences').click();await page.locator('#reject-preferences').click();assert.equal(await page.locator('.advertisement iframe').count(),1);
  // Vista previa privada sobre otro origen; la activación pública sigue apagada.
  const owner=await context.newPage();await owner.goto(origin+'/admin/login');await owner.locator('#email').fill('owner@example.test');await owner.locator('#password').fill('contraseña sintética de aislamiento 123');await owner.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await owner.waitForURL('**/admin');await owner.waitForFunction(()=>document.getElementById('ad-config-state').textContent.includes('Dominios autorizados'));
  await owner.locator('#disable-ads').click();await owner.waitForFunction(()=>document.getElementById('ad-config-state').textContent.startsWith('Publicidad desactivada.'));
@@ -63,5 +63,5 @@ try{
  assert.equal((await owner.request.get(adOrigin+'/api/admin/config')).status(),404);
  assert.ok(!(await context.cookies(adOrigin)).some(c=>c.name.includes('session')));
  console.log('Origen separado: creativo con XHR, iframe interno, inline/eval e imagen visible; documento y almacenamiento principal inaccesibles.');
- console.log('Enlace abre con opener nulo; rutas privadas ausentes del subdominio, CSP principal estricta, tokens de un uso, consentimiento y preview privada verificados.');
+ console.log('Enlace abre con opener nulo; rutas privadas ausentes del subdominio, CSP principal estricta, tokens de un uso, carga automática, estadísticas independientes y preview privada verificados.');
 }finally{await browser.close();await app.close();await rm(dir,{recursive:true,force:true});for(const [name,value] of Object.entries(previous)){if(value===undefined)delete process.env[name];else process.env[name]=value;}}

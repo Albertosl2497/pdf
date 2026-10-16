@@ -19,7 +19,7 @@ Son necesarios simultáneamente:
 - `ADVERTISING_ENABLED=true` en servidor.
 - Configuración global habilitada desde el panel.
 - Revisión declarada por el propietario y al menos un banner completo habilitado, con dominio autorizado.
-- Aceptación explícita del visitante para publicidad. Aceptar estadísticas no acepta anuncios; ambos permisos empiezan desactivados.
+- Los banners se solicitan automáticamente en páginas habilitadas. No hay opción de publicidad en preferencias; las estadísticas propias continúan desactivadas hasta aceptación.
 
 El banner solo aparece al final del contenido, en inicio, catálogo, listado de guías y herramientas disponibles. Se excluyen contacto, administración, legales, errores y herramientas ocultas/en mantenimiento. Se selecciona un solo banner adecuado al dispositivo y se omite si no cabe; no se fuerza un banner de escritorio en móvil. Sin configuración no se reserva un espacio vacío. La etiqueta “Publicidad” lo distingue de los controles de documentos.
 
@@ -27,13 +27,13 @@ No hay renovación periódica de impresiones. Los cambios de página, dispositiv
 
 ## Aislamiento y fallos
 
-Sin un origen publicitario separado, el código corre en iframe con `sandbox=allow-scripts`, sin `allow-same-origin`, ventanas emergentes, formularios o navegación del nivel superior. En el VPS se utiliza el origen separado descrito a continuación, con permisos ampliados únicamente allí. El servidor envía además una CSP con sandbox y orígenes de recursos limitados. La carga inicial requiere un permiso aleatorio de un uso y 60 segundos emitido tras consentimiento. No se envían archivos, nombres, bytes ni contraseñas a la API publicitaria.
+Sin un origen publicitario separado, el código corre en iframe con `sandbox=allow-scripts`, sin `allow-same-origin`, ventanas emergentes, formularios o navegación del nivel superior. En el VPS se utiliza el origen separado descrito a continuación, con permisos ampliados únicamente allí. El servidor envía además una CSP con sandbox y orígenes de recursos limitados. Las preferencias previas con `advertising:false` ya no controlan la publicidad. La API pública recibe página y dispositivo, sin declarar consentimiento del visitante; admite e ignora el campo legacy `consent` de clientes antiguos. La carga inicial requiere un permiso aleatorio de un uso y 60 segundos emitido al solicitar un banner en una página habilitada. No se envían archivos, nombres, bytes ni contraseñas a la API publicitaria.
 
-El único mensaje aceptado por el padre indica carga/fallo; se comprueban origen opaco, ventana emisora y valor enumerado. No se intercambian documentos o instrucciones de navegación. Los anuncios no tienen acceso al DOM, localStorage o credenciales del contexto que procesa los archivos. El proveedor sí recibe datos técnicos propios de su conexión. La prueba de aislamiento no constituye una auditoría general de todos los navegadores ni del proveedor.
+El único mensaje aceptado por el padre indica carga/fallo; se comprueban origen del marco (opaco en modo estricto o el origen separado configurado), ventana emisora y valor enumerado. No se intercambian documentos o instrucciones de navegación. Los anuncios no tienen acceso al DOM, localStorage o credenciales del contexto que procesa los archivos. El proveedor sí recibe datos técnicos propios de su conexión. La prueba de aislamiento no constituye una auditoría general de todos los navegadores ni del proveedor.
 
 Si falla o se bloquea el script, se retira su marco; un plazo de diez segundos limita las cargas que no confirman estado. Esto no verifica que se haya servido un anuncio comercial: el éxito de carga de un script no es una impresión validada. El procesamiento y la descarga PDF funcionan independientemente.
 
-Revocar consentimiento retira los marcos y evita futuras cargas. No revierte datos ya recibidos por terceros. “Desactivar toda la publicidad” revoca permisos pendientes y se refleja en clientes activos en su siguiente comprobación, prevista cada 60 segundos; los navegadores pueden retrasar tareas en segundo plano. Navegar, recargar o revocar consentimiento retira el contenido anterior. No se puede garantizar borrado remoto ni detener un cliente desconectado.
+Desactivar estadísticas no retira los anuncios. “Desactivar toda la publicidad” revoca permisos pendientes y se refleja en clientes activos en su siguiente comprobación, prevista cada 60 segundos; los navegadores pueden retrasar tareas en segundo plano. Navegar o recargar retira el contenido anterior y vuelve a consultar la configuración del propietario. No se puede garantizar borrado remoto ni detener un cliente desconectado.
 
 ## ads.txt
 
@@ -41,7 +41,7 @@ Pegar exclusivamente los registros proporcionados para el dominio real. Se valid
 
 ## Pruebas
 
-`npm test` cubre permisos, datos, orígenes, dominios, `ads.txt`, tokens de un uso y preview privada. `npm run test:advertising` usa una base temporal y respuestas de proveedor sintéticas: verifica ausencia de carga antes del consentimiento, aislamiento real de DOM/almacenamiento, revocación, ausencia de cargas duplicadas por resize, funcionamiento PDF con proveedor bloqueado, vista previa administrativa y desactivación. No ejecutar ensayos automatizados contra códigos comerciales reales.
+`npm test` cubre permisos, datos, orígenes, dominios, `ads.txt`, tokens de un uso y preview privada. `npm run test:advertising` usa una base temporal y respuestas de proveedor sintéticas: verifica carga automática sin aceptar estadísticas, preferencias publicitarias antiguas ignoradas, aislamiento real de DOM/almacenamiento, interruptor global, ausencia de cargas duplicadas por resize, funcionamiento PDF con proveedor bloqueado, vista previa administrativa y desactivación. No ejecutar ensayos automatizados contra códigos comerciales reales.
 
 ## Banners dinámicos en un origen separado (VPS)
 
@@ -49,7 +49,7 @@ Compose configura `AD_ORIGIN=https://ads.${DOMAIN}`. Crear DNS A para `ads` apun
 
 El marco permite `allow-scripts`, `allow-same-origin` y ventanas publicitarias separadas, conservando el bloqueo de navegación del padre. Los scripts inline y `eval` se permiten solo dentro del origen publicitario. Los enlaces publicitarios pueden abrir otra pestaña; el proveedor debe revisarse para comprobar que no genera ventanas no deseadas. La política del sitio principal sigue sin permitir scripts inline ni `unsafe-eval`, y autoriza únicamente el subdominio configurado como marco adicional. Los documentos, DOM y almacenamiento del sitio principal quedan separados por origen. La cookie de sesión HTTPS usa `__Host-`, sin Domain, y el subdominio no sirve endpoints administrativos ni CORS. Se deshabilita relajar document.domain y se utiliza Origin-Agent-Cluster.
 
-El proveedor recibe datos técnicos y puede almacenar identificadores en el origen publicitario o contactar dominios aprobados después del consentimiento. Al revocar se retira el marco; esto no borra cookies del proveedor ni revierte datos enviados. No es una certificación de privacidad o de seguridad de terceros. Un subdominio es otro origen, pero comparte sitio registrable: los controles de CSRF y cookies siguen siendo necesarios.
+El proveedor recibe datos técnicos y puede almacenar identificadores en el origen publicitario o contactar dominios aprobados al visitar una página con publicidad habilitada. Desactivar publicidad desde administración retira los marcos en la siguiente comprobación, pero no borra cookies del proveedor ni revierte datos enviados. No es una certificación de privacidad o de seguridad de terceros. Un subdominio es otro origen, pero comparte sitio registrable: los controles de CSRF y cookies siguen siendo necesarios.
 
 `AD_PROVIDER_HOSTS` continúa siendo una lista de hostnames exactos para scripts, imágenes, conexiones e iframes. No se acepta `*` ni `https:` global. Para el código y la respuesta compartidos se observaron `bauval.org`, `static.nresystems.com` y `cdn.storageimagedisplay.com`; autorizar esos recursos no certifica la titularidad de los dominios. La URL de destino de un enlace no necesita añadirse como recurso de carga. Si el proveedor exige otros recursos, revisar las peticiones y su función antes de ampliar permisos.
 
@@ -80,8 +80,14 @@ Reiniciar `web` es necesario para cargar el Caddyfile modificado: `up -d` por s�
 6. Comprobar `getent ahostsv4 ads.pdfalinstante.com`, `curl -I https://ads.pdfalinstante.com` y `docker compose logs --tail=100 web`. La raíz debe devolver 404 sobre HTTPS válido; no usar `curl -k`.
 7. Recargar administración con Ctrl+F5. El estado debe indicar `Marco: https://ads.pdfalinstante.com`. Mantener la configuración del banner guardada; no pegar de nuevo scripts en el sitio. Marcar el consentimiento de prueba y usar una sola vez «Probar banner guardado». Revisar imagen visible, consola y móvil sin pulsar anuncios propios.
 8. Si hay un bloqueo CSP de otro recurso o una respuesta vacía, mantener publicidad desactivada y revisar el caso. La prueba sintética no garantiza entrega comercial, CORS, cookies o aceptación de impresiones por Adsterra.
-9. Solo tras revisar la prueba y las políticas, cambiar `ADVERTISING_ENABLED=true`, ejecutar `docker compose up -d`, marcar en el panel la revisión y activación global, y guardar. Comprobar que rechazar publicidad impide la carga y aceptarla la permite.
+9. Solo tras revisar la prueba y las políticas, cambiar `ADVERTISING_ENABLED=true`, ejecutar `docker compose up -d`, marcar en el panel la revisión y activación global, y guardar. Comprobar en una sesión nueva que el banner carga automáticamente, que rechazar estadísticas no lo retira y que desactivar publicidad desde administración impide nuevas cargas.
 
 Sin `AD_ORIGIN`, el adaptador conserva el marco estricto de origen opaco para desarrollo/Workers. No permite inline/eval ni same-origin en el dominio principal. La configuración inválida de AD_ORIGIN impide arrancar Node; no hay fallback permisivo. Este despliegue de dos hostnames está implementado y probado para VPS, no configurado automáticamente en Workers.
 
 Pruebas: `npm test`, `npm run test:advertising` (modo estricto), `npm run test:isolated-ads` (origen separado) y `npm run test:docker` con imagen reconstruida. La última prueba verifica Caddy con CA local explícita, no certificados públicos del dominio real.
+
+## Carga automática para visitantes
+
+Cuando `ADVERTISING_ENABLED=true`, el banner y la activación global están habilitados y la revisión del propietario está guardada, el navegador solicita publicidad al abrir inicio, catálogo, índice de guías o herramientas. Las páginas legales, contacto y administración no cargan banners. No hay casilla ni aceptación publicitaria del visitante y no se envía un consentimiento ficticio a Adsterra. Las estadísticas agregadas siguen siendo opcionales e independientes. Los textos públicos describen la carga automática y las tecnologías del proveedor; el propietario debe comprobar que su operación y configuración cumplen las condiciones aplicables del proveedor y de su público.
+
+El interruptor del servidor y el de administración se conservan para operar y detener la publicidad. «Automática» no garantiza entrega para todos: bloqueadores, falta de inventario, errores del proveedor o límites de ancho pueden impedir verla. Tampoco garantiza impresiones válidas o ingresos. Las pruebas utilizan respuestas sintéticas, sin generar tráfico comercial.
