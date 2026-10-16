@@ -23,6 +23,8 @@ try{
  await page.goto(origin+'/unir-pdf');await page.waitForFunction(()=>document.querySelector('#tool')?.dataset.ready==='true');
  assert.equal(await page.locator('#advertising-consent').count(),0);
  const frame=page.frameLocator('.advertisement iframe');await frame.locator('#test-provider').waitFor();assert.equal(await frame.locator('#test-provider').innerText(),'parent-blocked');assert.equal(await frame.locator('#test-provider').getAttribute('data-storage'),'blocked');assert.equal(providerRequests,1);
+ assert.equal(await page.locator('#advertising-zone').count(),1);
+ assert.ok(await page.evaluate(()=>{const zone=document.getElementById('advertising-zone'),faq=[...document.querySelectorAll('h2')].find(h=>h.textContent==='Preguntas frecuentes');return !zone.closest('#tool')&&!!(zone.compareDocumentPosition(faq)&Node.DOCUMENT_POSITION_FOLLOWING)&&!!(document.getElementById('tool').compareDocumentPosition(zone)&Node.DOCUMENT_POSITION_FOLLOWING);}));
  assert.equal(await page.locator('.advertisement iframe').getAttribute('sandbox'),'allow-scripts');assert.equal(await page.locator('.advertisement iframe').evaluate(el=>el.contentDocument),null);
  await page.setViewportSize({width:400,height:844});await page.waitForTimeout(350);assert.equal(providerRequests,1);
  const doc=await PDFDocument.create();doc.addPage();await page.locator('#picker').setInputFiles({name:'no-debe-salir.pdf',mimeType:'application/pdf',buffer:Buffer.from(await doc.save())});await page.waitForFunction(()=>!document.querySelector('#process').disabled);await page.locator('#process').click();await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Documento listo'));assert.equal(providerRequests,1);

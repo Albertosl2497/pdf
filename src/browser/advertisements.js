@@ -5,8 +5,8 @@ export async function refreshAdvertisements(){
   if(document.hidden||location.pathname.startsWith('/admin')){removeAdvertisements();return;}
   if(!['/','/herramientas','/guias'].includes(location.pathname)&&!document.querySelector('#tool')){removeAdvertisements();return;}
   const container=document.getElementById('advertising-zone');if(!container){removeAdvertisements();return;}
-  const style=getComputedStyle(container),maxWidth=parseFloat(style.maxWidth)||document.documentElement.clientWidth;
-  const availableWidth=Math.max(0,Math.min(document.documentElement.clientWidth,maxWidth)-parseFloat(style.paddingLeft||0)-parseFloat(style.paddingRight||0));
+  const style=getComputedStyle(container),containerWidth=container.getBoundingClientRect().width;
+  const availableWidth=Math.max(0,Math.min(document.documentElement.clientWidth,containerWidth)-parseFloat(style.paddingLeft||0)-parseFloat(style.paddingRight||0));
   const device=matchMedia('(min-width: 768px)').matches?'desktop':'mobile';
   const signature=location.pathname+':'+device;
   if(frames.some(box=>box.querySelector('iframe').width>availableWidth))removeAdvertisements();

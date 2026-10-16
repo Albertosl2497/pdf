@@ -78,7 +78,7 @@ export async function publicAdvertising(request,env){
       const config=await readAdvertising(env);if(!config.enabled)return json({slots:[]});
       try{validateAdvertising(config,env);}catch{return json({slots:[]});}
       if(!await consume(env.DB,'advertising',120,60000))return json({slots:[]},429);
-      // El pie de página admite un solo banner; nunca invade selección/descarga.
+      // La zona publicitaria admite un solo banner; nunca invade selección/descarga.
       const slot=config.slots.find(s=>s.enabled&&(s.device==='all'||s.device===body.device));if(!slot)return json({slots:[]});
       if(Object.hasOwn(bySlug,body.page.slice(1))){const state=await env.DB.prepare('SELECT status FROM tools WHERE slug=?').bind(body.page.slice(1)).first();if(state&&state.status!=='published')return json({slots:[]});}
       await env.DB.prepare('DELETE FROM ad_permits WHERE expires_ms<?').bind(Date.now()).run();
