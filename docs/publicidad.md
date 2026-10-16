@@ -1,6 +1,6 @@
 # Publicidad: configuración y alcance
 
-El adaptador admite banners con `atOptions` y script HTTPS `/CLAVE/invoke.js`. No admite cualquier fragmento HTML, popunders, notificaciones, redirecciones automáticas ni claves secretas. La clave del banner es pública y debe copiarse del código real emitido para el sitio. No hay códigos, seller IDs o anuncios de ejemplo precargados en producción.
+El adaptador admite banners con `atOptions` y script HTTPS `/CLAVE/invoke.js` o `/22/CLAVE`, conservando la URL exacta entregada y la misma clave de 32 caracteres. El soporte de una ruta no certifica la titularidad del dominio ni la compatibilidad comercial del script. No admite cualquier fragmento HTML, popunders, notificaciones, redirecciones automáticas ni claves secretas. La clave del banner es pública y debe copiarse del código real emitido para el sitio. No hay códigos, seller IDs o anuncios de ejemplo precargados en producción.
 
 ## Configurar sin publicar
 

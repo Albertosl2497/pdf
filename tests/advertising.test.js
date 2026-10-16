@@ -54,3 +54,18 @@ test('preview privada requiere propietario y consentimiento, sin activar anuncio
  assert.equal((await (await call('/api/advertising/status')).json()).enabled,false);
  }finally{await mf.dispose();}
 });
+
+test('banner /22/CLAVE conserva URL exacta y exige clave, dominio y permisos',async()=>{
+ const data=config();data.slots[0].script_url=`https://ads.example.test/22/${key}`;
+ assert.equal(validateAdvertising(data,bindings).slots[0].script_url,data.slots[0].script_url);
+ for(const url of [`https://ads.example.test/22/${'b'.repeat(32)}`,`https://ads.example.test/23/${key}`,`https://ads.example.test/22/${key}/`,`https://ads.example.test/22/${key}?x=1`,`http://ads.example.test/22/${key}`,`https://other.example.test/22/${key}`]){
+  assert.throws(()=>validateAdvertising({...data,slots:[{...data.slots[0],script_url:url}]},bindings));
+ }
+ const {mf,call}=await runtime(bindings);try{
+  assert.equal((await call('/api/admin/advertising',{method:'PUT',admin:true,data})).status,200);
+  const ads=await (await call('/api/advertising',{method:'POST',data:{consent:true,page:'/unir-pdf',device:'mobile'}})).json();
+  assert.equal(ads.slots.length,1);
+  const frame=await call(ads.slots[0].src);assert.equal(frame.status,200);
+  const html=await frame.text();assert.ok(html.includes(`src="https://ads.example.test/22/${key}"`));assert.ok(frame.headers.get('Content-Security-Policy').includes('sandbox allow-scripts'));
+ }finally{await mf.dispose();}
+});

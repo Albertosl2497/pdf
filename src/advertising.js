@@ -14,7 +14,7 @@ export function validateAdvertising(data,env){
     const key=typeof slot.key==='string'?slot.key.trim():'',script_url=typeof slot.script_url==='string'?slot.script_url.trim():'';
     if(key&&!/^[a-f0-9]{32}$/i.test(key))throw Error('La clave del banner debe proceder del código real del proveedor.');
     let host='';
-    if(script_url){let url;try{url=new URL(script_url);}catch{throw Error('URL del proveedor no válida.');}if(url.protocol!=='https:'||url.username||url.password||url.port||url.search||url.hash||!/^\/[a-f0-9]{32}\/invoke\.js$/i.test(url.pathname)||url.pathname.split('/')[1]!==key)throw Error('Solo se admite el banner atOptions con HTTPS y /CLAVE/invoke.js; no se admiten scripts arbitrarios.');host=url.hostname;}
+    if(script_url){let url;try{url=new URL(script_url);}catch{throw Error('URL del proveedor no válida.');}const legacy=/^\/([a-f0-9]{32})\/invoke\.js$/i.exec(url.pathname),alternate=/^\/22\/([a-f0-9]{32})$/i.exec(url.pathname),pathKey=(legacy||alternate)?.[1];if(url.protocol!=='https:'||url.username||url.password||url.port||url.search||url.hash||!pathKey||pathKey!==key)throw Error('El banner requiere HTTPS y /CLAVE/invoke.js o /22/CLAVE con la misma clave; no se admiten scripts arbitrarios.');host=url.hostname;}
     if(slot.enabled&&(!key||!script_url))throw Error('Un banner activo necesita su clave y URL reales.');
     if(data.enabled&&slot.enabled&&!approved.includes(host))throw Error('El dominio del banner debe autorizarse en AD_PROVIDER_HOSTS del servidor.');
     return {id:slot.id,placement:'footer',device:slot.device,width:slot.width,height:slot.height,key,script_url,enabled:slot.enabled};
